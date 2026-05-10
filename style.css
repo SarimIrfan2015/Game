@@ -1,0 +1,65 @@
+/* .blue .health-bar div {
+    background: linear-gradient(to right, #0099ff, #66ccff);
+}
+
+.title {
+    font-size: 42px;
+    font-weight: bold;
+    letter-spacing: 3px;
+}
+
+canvas {
+    border: 4px solid white;
+    border-radius: 20px;
+    background: linear-gradient(to bottom, #1f2937, #111827);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+.controls {
+    width: 1200px;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+    color: #d1d5db;
+}
+
+.controls h3 {
+    margin-bottom: 6px;
+}
+
+.winner-popup {
+    position: absolute;
+    width: 400px;
+    height: 250px;
+    background: rgba(0, 0, 0, 0.95);
+    border: 3px solid white;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 25px;
+}
+
+.winner-popup h1 {
+    font-size: 42px;
+}
+
+.winner-popup button {
+    padding: 15px 35px;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    cursor: pointer;
+    background: #2563eb;
+    color: white;
+    transition: 0.3s;
+}
+
+.winner-popup button:hover {
+    transform: scale(1.05);
+}
+
+.hidden {
+    display: none;
+} */

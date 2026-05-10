@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2 Player Battle Arena</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            overflow: hidden;
+            background: #0f172a;
+        }
+
+        canvas {
+            display: block;
+            background:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, #1e293b, #0f172a);
+            background-size: 40px 40px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+
+        .playerBox {
+            width: 320px;
+        }
+
+        .bar {
+            width: 100%;
+            height: 28px;
+            background: #222;
+            border-radius: 40px;
+            overflow: hidden;
+            border: 2px solid white;
+        }
+
+        .fill {
+            height: 100%;
+            width: 100%;
+            transition: .2s;
+        }
+
+        #p1Bar {
+            background: linear-gradient(to right, #ff0000, #ff6666);
+        }
+
+        #p2Bar {
+            background: linear-gradient(to right, #0099ff, #66ccff);
+        }
+
+        .title {
+            font-size: 42px;
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            color: white;
+            font-size: 14px;
+        }
+
+        .popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid white;
+            text-align: center;
+            color: white;
+            display: none;
+        }
+
+        .popup h1 {
+            margin-bottom: 20px;
+            font-size: 40px;
+        }
+
+        .popup button {
+            padding: 15px 35px;
+            border: none;
+            border-radius: 10px;
+            background: #2563eb;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .popup button:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="ui">
+        <div class="playerBox">
+            <h2>PLAYER 1</h2>
+            <div class="bar">
+                <div class="fill" id="p1Bar"></div>
+            </div>
+        </div>
+
+        <div class="title">BATTLE ARENA</div>
+
+        <div class="playerBox">
+            <h2>PLAYER 2</h2>
+            <div class="bar">
+                <div class="fill" id="p2Bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div>
+            <b>PLAYER 1</b><br>
+            Move: W A S D<br>
+            Shoot: SPACE
+        </div>
+
+        <div>
+            <b>PLAYER 2</b><br>
+            Move: ARROWS<br>
+            Shoot: ENTER
+        </div>
+    </div>
+
+    <div class="popup" id="popup">
+        <h1 id="winnerText"></h1>
+        <button onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
+    <canvas id="game"></canvas>
+
+    <script>
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const keys = {};
+
+        window.addEventListener("keydown", e => {
+            keys[e.key] = true;
+        });
+
+        window.addEventListener("keyup", e => {
+            keys[e.key] = false;
+        });
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.radius = Math.random() * 4 + 2;
+                this.color = color;
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8;
+                this.life = 30;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life--;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        let particles = [];
+
+        class Player {
+            constructor(x, y, color, controls) {
+                this.x = x;
+                this.y = y;
+                this.width = 60;
+                this.height = 60;
+                this.color = color;
+                this.speed = 5;
+                this.health = 100;
+                this.controls = controls;
+                this.bullets = [];
+                this.direction = 1;
+                this.cooldown = 0;
+            }
+
+            draw() {
+                // body
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // head
+                ctx.fillStyle = "#f1c27d";
+                ctx.beginPath();
+                ctx.arc(this.x + 30, this.y + 18, 12, 0, Math.PI * 2);
+                ctx.fill();
+
+                // gun
+                ctx.fillStyle = "#111";
+
+                if (this.direction === 1) {
+                    ctx.fillRect(this.x + 55, this.y + 25, 25, 8);
+                } else {
+                    ctx.fillRect(this.x - 20, this.y + 25, 25, 8);
+                }
+            }
+
+            move() {
+                if (keys[this.controls.up] && this.y > 0) {
+                    this.y -= this.speed;
+                }
+
+                if (keys[this.controls.down] && this.y < canvas.height - this.height) {
+                    this.y += this.speed;
+                }
+
+                if (keys[this.controls.left] && this.x > 0) {
+                    this.x -= this.speed;
+                    this.direction = -1;
+                }
+
+                if (keys[this.controls.right] && this.x < canvas.width - this.width) {
+                    this.x += this.speed;
+                    this.direction = 1;
+                }
+
+                if (keys[this.controls.shoot] && this.cooldown <= 0) {
+                    this.shoot();
+                    this.cooldown = 20;
+                }
+
+                if (this.cooldown > 0) {
+                    this.cooldown--;
+                }
+            }
+
+            shoot() {
+                this.bullets.push({
+                    x: this.direction === 1 ? this.x + 60 : this.x,
+                    y: this.y + 30,
+                    radius: 6,
+                    speed: 12 * this.direction
+                });
+            }
+
+            updateBullets(enemy) {
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+
+                    let b = this.bullets[i];
+
+                    b.x += b.speed;
+
+                    // glow
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = "yellow";
+
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = "yellow";
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+
+                    if (
+                        b.x > enemy.x &&
+                        b.x < enemy.x + enemy.width &&
+                        b.y > enemy.y &&
+                        b.y < enemy.y + enemy.height
+                    ) {
+                        enemy.health -= 5;
+
+                        for (let j = 0; j < 10; j++) {
+                            particles.push(
+                                new Particle(b.x, b.y, enemy.color)
+                            );
+                        }
+
+                        this.bullets.splice(i, 1);
+                    }
+
+                    if (b.x < 0 || b.x > canvas.width) {
+                        this.bullets.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        const player1 = new Player(
+            100,
+            canvas.height / 2,
+            "#ff3b3b",
+            {
+                up: "w",
+                down: "s",
+                left: "a",
+                right: "d",
+                shoot: " "
+            }
+        );
+
+        const player2 = new Player(
+            canvas.width - 160,
+            canvas.height / 2,
+            "#2196f3",
+            {
+                up: "ArrowUp",
+                down: "ArrowDown",
+                left: "ArrowLeft",
+                right: "ArrowRight",
+                shoot: "Enter"
+            }
+        );
+
+        const p1Bar = document.getElementById("p1Bar");
+        const p2Bar = document.getElementById("p2Bar");
+
+        const popup = document.getElementById("popup");
+        const winnerText = document.getElementById("winnerText");
+
+        let gameOver = false;
+
+        function drawParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function checkWinner() {
+
+            if (player1.health <= 0) {
+                gameOver = true;
+                popup.style.display = "block";
+                winnerText.innerText = "PLAYER 2 WINS";
+            }
+
+            if (player2.health <= 0) {
+                gameOver = true;
+                popup.style.display = "block";
+                winnerText.innerText = "PLAYER 1 WINS";
+            }
+        }
+
+        function animate() {
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (!gameOver) {
+
+                player1.move();
+                player2.move();
+
+                player1.draw();
+                player2.draw();
+
+                player1.updateBullets(player2);
+                player2.updateBullets(player1);
+
+                drawParticles();
+
+                p1Bar.style.width = player1.health + "%";
+                p2Bar.style.width = player2.health + "%";
+
+                checkWinner();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+
+</body>
+
+</html>
